@@ -1,3 +1,4 @@
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,6 +8,8 @@ public class Scene {
     private Background background;
     private int defaultNextSceneId;
     private boolean isMiniGame = false;
+    private boolean isEnding = false;
+    private Color endingColor;
 
     private List<Dialog> dialogs = new ArrayList<>();
     private List<Option> options = new ArrayList<>();
@@ -76,5 +79,22 @@ public class Scene {
 
     public void setMiniGame(boolean miniGame) {
         isMiniGame = miniGame;
+    }
+
+    public boolean isEnding() {
+        return isEnding;
+    }
+
+    public void setEnding(boolean ending) {
+        isEnding = ending;
+    }
+
+    public void setEnding(boolean ending, Color endingColor) {
+        isEnding = ending;
+        this.endingColor = endingColor;
+    }
+
+    public Color getEndingColor() {
+        return endingColor;
     }
 }

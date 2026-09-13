@@ -34,3 +34,11 @@ class MiniGameSuccessStrategy implements ScoreStrategy {
         return 20;
     }
 }
+
+// Strategy Mini Game Gagal (-10)
+class MiniGameFailStrategy implements ScoreStrategy {
+    @Override
+    public int calculateScore() {
+        return -10;
+    }
+}

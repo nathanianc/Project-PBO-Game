@@ -79,6 +79,10 @@ public class GameEngine {
             currentScene = sceneMap.get(sceneId);
             currentDialogIndex = 0; // Reset index dialog ke awal scene baru
 
+            // Otomatis pindah ke layar Mini Game kalau scene ini ditandai isMiniGame(),
+            // dan balik ke layar dialog biasa kalau bukan (misal sesudah menang/kalah mini game)
+            this.currentState = currentScene.isMiniGame() ? GameState.MINI_GAME : GameState.PLAYING;
+
             // --- TRIGER SFX & BGM OTOMATIS BERDASARKAN SCENE ---
             if (sceneId == 11) {
                 // SFX Kejedot / Pagar
