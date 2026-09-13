@@ -30,6 +30,9 @@ public class StisVisualNovel extends JFrame {
             case PLAYING:
                 mainContainer.add(new PlayingPanel(engine, this::renderScreen));
                 break;
+            case MINI_GAME:
+                mainContainer.add(new MiniGamePanel(engine, this::renderScreen));
+                break;
             case GAME_OVER:
                 mainContainer.add(new GameOverPanel(engine, this::renderScreen));
                 break;

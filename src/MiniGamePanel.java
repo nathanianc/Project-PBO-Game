@@ -142,13 +142,13 @@ public class MiniGamePanel extends JPanel {
 
         if (isCorrect) {
             JOptionPane.showMessageDialog(this,
-                    "\uD83C\uDF89 PROGRAM BEBAS ERROR!\nUrutan Inheritance Sempurna (+20 Poin)",
-                    "Mini Game Berhasil",
+                    "PROGRAM BEBAS ERROR!\n(+20 Poin)",
+                    "SUCCEED",
                     JOptionPane.INFORMATION_MESSAGE);
             engine.goToScene(61);
         } else {
             JOptionPane.showMessageDialog(this,
-                    "\u274C PROGRAM MASIH ERROR!\nUrutan kodingan belum tepat (-10 Poin)",
+                    "PROGRAM MASIH ERROR!\nUrutan kodingan belum tepat (-10 Poin)",
                     "Mini Game Gagal",
                     JOptionPane.ERROR_MESSAGE);
             engine.goToScene(62);

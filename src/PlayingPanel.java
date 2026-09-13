@@ -1,6 +1,12 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.util.List;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 
 public class PlayingPanel extends JPanel {
     private GameEngine engine;
@@ -86,11 +92,11 @@ public class PlayingPanel extends JPanel {
 
         JLabel lblTitle = new JLabel(current.getTitle());
         lblTitle.setForeground(Color.WHITE);
-        lblTitle.setFont(new Font("SansSerif", Font.BOLD, 15));
+        lblTitle.setFont(PixelFont.get(11f));
 
         JLabel lblScore = new JLabel("Skor: " + engine.getTotalScore() + "  ");
         lblScore.setForeground(new Color(255, 234, 167));
-        lblScore.setFont(new Font("SansSerif", Font.BOLD, 15));
+        lblScore.setFont(PixelFont.get(11f));
 
         headerPanel.add(lblTitle, BorderLayout.WEST);
         headerPanel.add(lblScore, BorderLayout.EAST);
@@ -134,13 +140,13 @@ public class PlayingPanel extends JPanel {
             namePanel.setMaximumSize(new Dimension(1100, 30));
 
             JLabel lblName = new JLabel(" " + speakerName + " ");
-            lblName.setFont(new Font("SansSerif", Font.BOLD, 14));
+            lblName.setFont(PixelFont.get(10f));
             lblName.setForeground(Color.WHITE);
             lblName.setBackground(new Color(45, 52, 54, 240));
             lblName.setOpaque(true);
             lblName.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(new Color(200, 200, 200, 100), 1),
-                    BorderFactory.createEmptyBorder(4, 14, 4, 14)
+                    BorderFactory.createEmptyBorder(10, 18, 10, 18)
             ));
             namePanel.add(lblName);
         } else {
@@ -152,13 +158,18 @@ public class PlayingPanel extends JPanel {
         RoundedDialogPanel dialogBoxPanel = new RoundedDialogPanel();
         dialogBoxPanel.setLayout(new BorderLayout());
 
-        JTextArea txtDialog = new JTextArea("");
-        txtDialog.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        JTextPane txtDialog = new JTextPane();
+        txtDialog.setFont(PixelFont.get(11f));
         txtDialog.setForeground(new Color(240, 240, 240));
         txtDialog.setOpaque(false);
         txtDialog.setEditable(false);
-        txtDialog.setLineWrap(true);
-        txtDialog.setWrapStyleWord(true);
+
+        // JTextPane otomatis word-wrap; jarak antar baris diatur lewat paragraph attribute di bawah.
+        StyledDocument dialogDoc = txtDialog.getStyledDocument();
+        SimpleAttributeSet dialogLineSpacing = new SimpleAttributeSet();
+        StyleConstants.setLineSpacing(dialogLineSpacing, 0.4f); // jarak antar baris sedikit dilebarkan
+        StyleConstants.setForeground(dialogLineSpacing, new Color(240, 240, 240));
+        dialogDoc.setParagraphAttributes(0, dialogDoc.getLength(), dialogLineSpacing, false);
 
         JScrollPane scrollDialog = new JScrollPane(txtDialog);
         scrollDialog.setOpaque(false);
@@ -200,9 +211,9 @@ public class PlayingPanel extends JPanel {
             optionsPanel.setPreferredSize(new Dimension(1100, 42));
             optionsPanel.setMaximumSize(new Dimension(1100, 42));
 
-            JButton btnNext = createStyledOptionButton("Lanjut ➔");
+            JButton btnNext = createStyledOptionButton("Lanjut >");
             btnNext.setPreferredSize(new Dimension(140, 40));
-            btnNext.setFont(new Font("SansSerif", Font.BOLD, 14));
+            btnNext.setFont(PixelFont.get(10f));
             btnNext.addActionListener(e -> {
                 engine.nextDialogOrScene();
                 onStateChanged.run();
@@ -217,38 +228,65 @@ public class PlayingPanel extends JPanel {
         // Jika opsi pilihan: 1500ms (1.5 detik). Jika tombol lanjut: 500ms (0.5 detik)
         int optionDelay = hasOptions ? 1500 : 500;
 
+        // Logika "sesudah teks selesai muncul" dipisah jadi method sendiri (finishTyping),
+        // dipanggil baik saat animasi ketik kelar NORMAL, maupun saat di-skip pakai tombol spasi.
+        Runnable finishTyping = () -> {
+            Timer delayTimer = new Timer(optionDelay, delayEvent -> {
+                ((Timer) delayEvent.getSource()).stop();
+                optionsPanel.setVisible(true);
+
+                final float[] alpha = {0.0f};
+                Timer fadeTimer = new Timer(20, null);
+                fadeTimer.addActionListener(fadeEvent -> {
+                    alpha[0] += 0.08f; // Fade-in sedikit lebih cepat & mulus
+                    if (alpha[0] >= 1.0f) {
+                        optionsPanel.setAlpha(1.0f);
+                        ((Timer) fadeEvent.getSource()).stop();
+                    } else {
+                        optionsPanel.setAlpha(alpha[0]);
+                    }
+                });
+                fadeTimer.start();
+            });
+            delayTimer.setRepeats(false);
+            delayTimer.start();
+        };
+
         Timer typingTimer = new Timer(20, null);
         typingTimer.addActionListener(e -> {
             if (charIndex[0] < textToType.length()) {
-                txtDialog.append(String.valueOf(textToType.charAt(charIndex[0])));
+                try {
+                    dialogDoc.insertString(dialogDoc.getLength(), String.valueOf(textToType.charAt(charIndex[0])), null);
+                    dialogDoc.setParagraphAttributes(0, dialogDoc.getLength(), dialogLineSpacing, false);
+                } catch (BadLocationException ignored) {
+                }
                 charIndex[0]++;
             } else {
                 ((Timer) e.getSource()).stop();
-
-                // Timer jeda dinamis sebelum fade-in
-                Timer delayTimer = new Timer(optionDelay, delayEvent -> {
-                    ((Timer) delayEvent.getSource()).stop();
-                    optionsPanel.setVisible(true);
-
-                    // Animasi Fade-In
-                    final float[] alpha = {0.0f};
-                    Timer fadeTimer = new Timer(20, null);
-                    fadeTimer.addActionListener(fadeEvent -> {
-                        alpha[0] += 0.08f; // Fade-in sedikit lebih cepat & mulus
-                        if (alpha[0] >= 1.0f) {
-                            optionsPanel.setAlpha(1.0f);
-                            ((Timer) fadeEvent.getSource()).stop();
-                        } else {
-                            optionsPanel.setAlpha(alpha[0]);
-                        }
-                    });
-                    fadeTimer.start();
-                });
-                delayTimer.setRepeats(false);
-                delayTimer.start();
+                finishTyping.run();
             }
         });
         typingTimer.start();
+
+        // --- SKIP ANIMASI KETIK PAKAI TOMBOL SPASI ---
+        // WHEN_IN_FOCUSED_WINDOW dipakai biar tetap kepencet walau fokus lagi di komponen lain (misal tombol).
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "skipTyping");
+        getActionMap().put("skipTyping", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (typingTimer.isRunning()) {
+                    typingTimer.stop();
+                    try {
+                        dialogDoc.remove(0, dialogDoc.getLength());
+                        dialogDoc.insertString(0, textToType, null);
+                        dialogDoc.setParagraphAttributes(0, dialogDoc.getLength(), dialogLineSpacing, false);
+                    } catch (BadLocationException ignored) {
+                    }
+                    charIndex[0] = textToType.length();
+                    finishTyping.run();
+                }
+            }
+        });
 
         dialogWrapper.add(namePanel);
         dialogWrapper.add(dialogBoxPanel);
@@ -285,7 +323,7 @@ public class PlayingPanel extends JPanel {
 
     private JButton createStyledOptionButton(String text) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        btn.setFont(PixelFont.get(10f));
         btn.setForeground(Color.WHITE);
         btn.setBackground(new Color(35, 39, 42, 235));
         btn.setOpaque(true);
