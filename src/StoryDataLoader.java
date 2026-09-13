@@ -17,6 +17,7 @@ public class StoryDataLoader {
         backgrounds.put("kos", new Background("Kamar Kos", "assets/bg_kos.png"));
         backgrounds.put("bem", new Background("Sekretariat BEM", "assets/bg_bem.png"));
         backgrounds.put("lab_komputer", new Background("Lab Komputer", "assets/bg_lab.png"));
+        backgrounds.put("presentasi", new Background("Kelas Presentasi", "assets/presentasi.png"));
 
         // POSE SAMMY
         characters.put("sammy_normal", new Character("Sammy", "Mahasiswa STIS", "assets/sammy.png"));
@@ -24,6 +25,10 @@ public class StoryDataLoader {
         characters.put("sammy_pusing", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_pusing.png"));
         characters.put("sammy_nyontek", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_nyontek.png"));
         characters.put("sammy_jengkel", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_jengkel.png"));
+        characters.put("sammy_takut", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_takut.png"));
+        characters.put("sammy_tenang", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_tenang.png"));
+        characters.put("sammy_marah", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_marah.png"));
+        characters.put("sammy_kesal", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_kesal.png"));
 
         // POSE DHITO
         characters.put("dhito", new Character("Dhito", "Teman Seangkatan", "assets/dhito.png"));
@@ -31,6 +36,7 @@ public class StoryDataLoader {
 
         // POSE PAK IBNU
         characters.put("pak_ibnu", new Character("Pak Ibnu", "Dosen PBO", "assets/pak_ibnu.png"));
+        characters.put("ibnu_tanya", new Character("Pak Ibnu", "Dosen PBO", "assets/ibnu_tanya.png"));
 
         // POSE THANIA
         characters.put("thania", new Character("Nathania", "Teman Kelompok", "assets/thania.png"));
@@ -51,6 +57,7 @@ public class StoryDataLoader {
         scenes.addAll(createScene1Branch());
         scenes.addAll(createScene2Branch());
         scenes.addAll(createScene6Branch());
+        scenes.addAll(createScene7Branch());
 
         return scenes;
     }
@@ -109,7 +116,7 @@ public class StoryDataLoader {
 
         Scene s23 = new Scene(23, "Quiz Mendadak PBO", getBg("kelas"), 6);
         s23.addDialog("Sammy: \"Pak, saya izin ke toilet sebentar...\"", getChar("sammy_kejedot"));
-        s23.addDialog("Oke guys, kita tunggu Sammy ya!")
+        s23.addDialog("Oke guys, kita tunggu Sammy ya!");
 
         branch.add(s2);
         branch.add(s21);
@@ -143,6 +150,34 @@ public class StoryDataLoader {
         branch.add(s6_game);
         branch.add(s6_win);
         branch.add(s6_lose);
+        return branch;
+    }
+
+    private static List<Scene> createScene7Branch() {
+        List<Scene> branch = new ArrayList<>();
+
+        Scene s7 = new Scene(7, "Presentasi di Kelas", getBg("presentasi"));
+        s7.addDialog("Sammy: \"Guys, kok tiba-tiba crash ya...\"", getChar("sammy_takut"));
+        s7.addDialog("Pak Ibnu: \"Sammy, program kamu kok berhenti pas manggil inheritance Hewan. Ada apa?\"", getChar("ibnu_tanya"));
+
+        s7.addOption("Tetap tenang & jujur menjelaskan exception secara teknis", 71, new BestOptionStrategy());
+        s7.addOption("Menyalahkan koneksi internet lab & restart laptop", 72, new BadOptionStrategy());
+        s7.addOption("Berargumen dengan dosen menyalahkan data uji coba", 73, new RiskyOptionStrategy());
+
+        // Sub-Scene Hasil Pilihan -> Lanjut ke Scene 2
+        Scene s71 = new Scene(71, "Presentasi di Kelas", getBg("presentasi"), 8);
+        s71.addDialog("Sammy: \"Mohon maaf Pak, ada kesalahan logika override pada parent class Hewan, tapi saya sudah siapkan blok try-catch ini untuk menangani exception-nya secara langsung.\"", getChar("sammy_tenang"));
+
+        Scene s72 = new Scene(72, "Presentasi di Kelas", getBg("presentasi"), 8);
+        s72.addDialog("Sammy: \"Wah, ini pasti gara-gara koneksi Wi-Fi lab lemot banget Pak! Saya restart laptop dulu ya!\"", getChar("sammy_marah"));
+
+        Scene s73 = new Scene(73, "Presentasi di Kelas", getBg("presentasi"), 8);
+        s73.addDialog("Sammy: \"Bukan salah kodenya Pak, tapi data uji coba dari Bapak yang input-nya aneh dan gak sesuai!\"", getChar("sammy_kesal"));
+
+        branch.add(s7);
+        branch.add(s71);
+        branch.add(s72);
+        branch.add(s73);
         return branch;
     }
 }
