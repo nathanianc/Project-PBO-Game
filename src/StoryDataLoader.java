@@ -275,20 +275,20 @@ public class StoryDataLoader {
     private static List<Scene> createScene6Branch() {
         List<Scene> branch = new ArrayList<>();
 
-        Scene s6 = new Scene(6, "Troubleshooting Program", getBg("lab_komputer"), 60);
+        Scene s6 = new Scene(6, "Troubleshooting Program", getBg("kelas"), 60);
         s6.addDialog("Nat: \"Guys, aku lagi jalanin program kita dan muncul error. Minta tolong diperbaikin ges.\"", getChar("thania_tanya"));
         s6.addDialog("Sammy: \"Iya, kayanya ada urutan kodingan yang salah, deh.\"", getChar("sammy_pusing"));
         s6.addDialog("Dhito: \"Kita suruh penonton kita untuk perbaikin aja kali ya?\"", getChar("dhito"));
 
-        Scene s6_game = new Scene(60, "Puzzle Inheritance Java", getBg("lab_komputer"));
+        Scene s6_game = new Scene(60, "Puzzle Inheritance Java", getBg("kelas"));
         s6_game.setMiniGame(true);
 
-        Scene s6_win = new Scene(61, "Troubleshooting Berhasil", getBg("lab_komputer"), 7);
+        Scene s6_win = new Scene(61, "Troubleshooting Berhasil", getBg("kelas"), 7);
         s6_win.addDialog("Nat: \"Wah, mantap! Programnya langsung jalan tanpa error!\"", getChar("thania"));
         s6_win.addDialog("Sammy: \"Yesss! Makasih ya udah bantuin urutin kodingannya!\"", getChar("sammy_yes"));
         s6_win.addDialog("Dhito: \"Gas lanjut garap bagian lain!\"", getChar("dhito_setuju"));
 
-        Scene s6_lose = new Scene(62, "Troubleshooting Gagal", getBg("lab_komputer"), 7);
+        Scene s6_lose = new Scene(62, "Troubleshooting Gagal", getBg("kelas"), 7);
         s6_lose.addDialog("Nat: \"Aduh, masih error nih. Kayaknya urutannya masih ada yang kebalik.\"", getChar("thania_tanya"));
         s6_lose.addDialog("Sammy: \"Huft... ya sudah deh, biar aku coba periksa manual lagi.\"", getChar("sammy_pusing"));
 
