@@ -15,12 +15,14 @@ public class StoryDataLoader {
         backgrounds.put("otista", new Background("Otista III", "assets/otista.jpg"));
         backgrounds.put("gerbang_samping", new Background("Gerbang Samping StiS", "assets/gerbang_samping.jpg"));
         backgrounds.put("audit", new Background("Auditorium STIS", "assets/audit_pkkmb.jpg"));
-
         backgrounds.put("kelas", new Background("Ruang Kelas PBO", "assets/bg-kelas.jpeg"));
         backgrounds.put("kos", new Background("Kamar Kos", "assets/kos.jpg"));
         backgrounds.put("warnet", new Background("Warnet", "assets/warnet.jpg"));
         backgrounds.put("lab_komputer", new Background("Lab Komputer", "assets/bg_lab.png"));
         backgrounds.put("lobby", new Background("Lab Komputer", "assets/lobby.jpg"));
+        backgrounds.put("ruang_presentasi", new Background("presentasi", "assets/presentasi.jpeg"));
+        backgrounds.put("audit_end", new Background("Audit Ending", "assets/audit8.jpeg"));
+        backgrounds.put("kantin", new Background("Kantin STIS", "assets/kantin.jpg"));
         // POSE SAMMY
         characters.put("sammy_telat", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_telat.png"));
         characters.put("sammy_lega", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_lega.png"));
@@ -43,18 +45,21 @@ public class StoryDataLoader {
         characters.put("sammy_ngantuk", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_ngantuk.png"));
         characters.put("sammy_bijak", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_bijak.png"));
         characters.put("sammy_hormat", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_hormat.png"));
+        characters.put("sammy_capek", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_capek.png"));
         //SATPAM
         characters.put("satpam", new Character("Satpam", "Mahasiswa STIS", "assets/satpam_marah.png"));
 
         // POSE DHITO
         characters.put("dhito", new Character("Dhito", "Teman Seangkatan", "assets/dhito.png"));
         characters.put("dhito_jengkel", new Character("Dhito", "Teman Seangkatan", "assets/dhito_jengkel.png"));
+        characters.put("dhito_cemas", new Character("Dhito", "Teman Seangkatan", "assets/dhito_panik.png"));
 
         // POSE PAK IBNU
         characters.put("pak_ibnu", new Character("Pak Ibnu", "Dosen PBO", "assets/pak_ibnu.png"));
         characters.put("pak_ibnu_biasa", new Character("Pak Ibnu", "Dosen PBO", "assets/pak_ibnu_biasa.png"));
         // POSE THANIA
         characters.put("thania", new Character("Nathania", "Teman Kelompok", "assets/thania.png"));
+        characters.put("thania_suntuk", new Character("Nathania", "Teman Kelompok", "assets/nat_suntuk.png"));
 
         // POSE NELA
         characters.put("nela_manggil", new Character("Nela", "Teman Kelompok", "assets/nela_manggil.png"));
@@ -321,7 +326,7 @@ public class StoryDataLoader {
         List<Scene> branch = new ArrayList<>();
 
         // Ending 1: IPK tinggi (poin akumulasi bagus)
-        Scene s8_good = new Scene(8, "Ending Bahagia", getBg("audit"));
+        Scene s8_good = new Scene(8, "Ending Bahagia", getBg("audit_end"));
         s8_good.setEnding(true);
         s8_good.addDialog("Sammy: \"Puji Tuhan, akhirnya setelah kerja kerasku selama ini, aku dapat IPK 4.00. Ga sia-sia yaa selama ini aku belajar dengan sungguh-sungguh, memahami setiap permasalahan, dan bisa menjadi pemimpin yang baik untuk kelompokku.\"", getChar("sammy_yes"));
 
