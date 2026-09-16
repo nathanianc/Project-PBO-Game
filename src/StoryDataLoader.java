@@ -46,13 +46,22 @@ public class StoryDataLoader {
         characters.put("sammy_bijak", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_bijak.png"));
         characters.put("sammy_hormat", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_hormat.png"));
         characters.put("sammy_capek", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_capek.png"));
+        characters.put("sammy_cuek", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_cuek.png"));
+        characters.put("sammy_opini", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_opini.png"));
+        characters.put("sammy_bingung", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_bingung.png"));
+        characters.put("sammy_kejedot", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_kejedot.png"));
+        characters.put("sammy_tenang", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_tenang.png"));
+        characters.put("sammy_ngeles", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_ngeles.png"));
+        characters.put("sammy_ngeyel", new Character("Sammy", "Mahasiswa STIS", "assets/sammy_ngeyel.png"));
         //SATPAM
         characters.put("satpam", new Character("Satpam", "Mahasiswa STIS", "assets/satpam_marah.png"));
 
         // POSE DHITO
         characters.put("dhito", new Character("Dhito", "Teman Seangkatan", "assets/dhito.png"));
         characters.put("dhito_jengkel", new Character("Dhito", "Teman Seangkatan", "assets/dhito_jengkel.png"));
-        characters.put("dhito_cemas", new Character("Dhito", "Teman Seangkatan", "assets/dhito_panik.png"));
+        characters.put("dhito_panik", new Character("Dhito", "Teman Seangkatan", "assets/dhito_panik.png"));
+        characters.put("dhito_cemas", new Character("Dhito", "Teman Seangkatan", "assets/dhito_cemas.png"));
+        characters.put("dhito_setuju", new Character("Dhito", "Teman Seangkatan", "assets/dhito_setuju.png"));
 
         // POSE PAK IBNU
         characters.put("pak_ibnu", new Character("Pak Ibnu", "Dosen PBO", "assets/pak_ibnu.png"));
@@ -60,6 +69,10 @@ public class StoryDataLoader {
         // POSE THANIA
         characters.put("thania", new Character("Nathania", "Teman Kelompok", "assets/thania.png"));
         characters.put("thania_suntuk", new Character("Nathania", "Teman Kelompok", "assets/nat_suntuk.png"));
+        characters.put("thania_marah", new Character("Nathania", "Teman Kelompok", "assets/nat_marah.png"));
+        characters.put("thania_tanya", new Character("Nathania", "Teman Kelompok", "assets/nat_tanya.png"));
+        characters.put("thania_tunjuk", new Character("Nathania", "Teman Kelompok", "assets/nat_tunjuk.png"));
+        characters.put("thania_khawatir", new Character("Nathania", "Teman Kelompok", "assets/nat_khawatir.png"));
 
         // POSE NELA
         characters.put("nela_manggil", new Character("Nela", "Teman Kelompok", "assets/nela_manggil.png"));
@@ -191,7 +204,7 @@ public class StoryDataLoader {
 
         Scene s4 = new Scene(4, "Lempar Tanggung Jawab", getBg("kantin"));
         s4.addDialog("Nat: \"Eh... tugas kita kemarin masih banyak yang belum kelar guys\"", getChar("thania_suntuk"));
-        s4.addDialog("Dhito: \"Iya yaa... Kita keteteran banget dengan tugas yang lain\"", getChar("dhito_cemas"));
+        s4.addDialog("Dhito: \"Iya yaa... Kita keteteran banget dengan tugas yang lain\"", getChar("dhito_panik"));
         s4.addDialog("Sammy: \"...\"", getChar("sammy_pusing"));
 
         // Pilihan mengarah ke Sub-Scene ID 41, 42, 43
@@ -202,19 +215,19 @@ public class StoryDataLoader {
         // Sub-Scene Hasil Pilihan -> Lanjut ke Scene 5
         Scene s41 = new Scene(41, "Lempar Tanggung Jawab", getBg("kantin"), 5);
         s41.addDialog("Sammy: \"Udahlah, biar aku aja yang kerjain semua kodenya sendiri.\"", getChar("sammy_capek"));
-        s41.addDialog("Nat: \"Eh, Sam? Kok kamu diem-diem ngerjain sendiri?\"", getChar("thania_suntuk"));
+        s41.addDialog("Nat: \"Eh, Sam? Kok kamu diem-diem ngerjain sendiri?\"", getChar("thania_tanya"));
         s41.addDialog("Sammy: \"Nggak apa-apa kok... cuma capek aja mikirin bagi tugasnya.\"", getChar("sammy_capek"));
 
         Scene s42 = new Scene(42, "Lempar Tanggung Jawab", getBg("kantin"), 5);
-        s42.addDialog("Sammy: \"Guys, gimana kalau kita rapat bentar sekarang? Kita bagi tugas jelas, terus bikin checklist deadline biar nggak keteteran lagi.\"", getChar("sammy_normal"));
-        s42.addDialog("Dhito: \"Nah, ide bagus tuh! Aku pegang bagian logic-nya deh.\"", getChar("dhito"));
-        s42.addDialog("Nat: \"Aku bagian UI-nya ya, biar jelas juga progress-nya.\"", getChar("thania"));
-        s42.addDialog("Sammy: \"Sip, langsung gaskeun!\"", getChar("sammy_lega2"));
+        s42.addDialog("Sammy: \"Guys, gimana kalau kita rapat bentar sekarang? Kita bagi tugas jelas, terus bikin checklist deadline biar nggak keteteran lagi.\"", getChar("sammy_opini"));
+        s42.addDialog("Dhito: \"Nah, ide bagus tuh! Aku pegang bagian logic-nya deh.\"", getChar("dhito_setuju"));
+        s42.addDialog("Nat: \"Aku bagian UI-nya ya, biar jelas juga progress-nya.\"", getChar("thania_tunjuk"));
+        s42.addDialog("Sammy: \"Sip, langsung gaskeun!\"", getChar("sammy_yes"));
 
         Scene s43 = new Scene(43, "Lempar Tanggung Jawab", getBg("kantin"), 5);
         s43.addDialog("Sammy: \"Ah, ntar juga ada yang mulai duluan kali.\"", getChar("sammy_cuek"));
         s43.addDialog("Dhito: \"...(diem, nungguin ada yang mulai)\"", getChar("dhito_cemas"));
-        s43.addDialog("Nat: \"Kalau gini terus, tugasnya bisa numpuk terus lho.\"", getChar("thania_suntuk"));
+        s43.addDialog("Nat: \"Kalau gini terus, tugasnya bisa numpuk terus lho.\"", getChar("thania_marah"));
 
         branch.add(s4);
         branch.add(s41);
@@ -240,9 +253,9 @@ public class StoryDataLoader {
 
         // Sub-Scene Hasil Pilihan -> Lanjut ke Scene 6
         Scene s51 = new Scene(51, "Ajakan Jadi Ketua Panitia", getBg("kelas"), 6);
-        s51.addDialog("Nat: \"Sam, kamu nggak papa?\"", getChar("nat_khawatir"));
+        s51.addDialog("Nat: \"Sam, kamu nggak papa?\"", getChar("thania_khawatir"));
         s51.addDialog("Sammy: (ngantuk2) \"nggak papa kok, aku masih sanggup\"", getChar("sammy_ngantuk"));
-        s51.addDialog("Sammy: *kejedot meja* \"adoh\"", getChar("sammy_ngantuk"));
+        s51.addDialog("Sammy: *kejedot meja* \"adoh\"", getChar("sammy_kejedot"));
 
         Scene s52 = new Scene(52, "Ajakan Jadi Ketua Panitia", getBg("lobby"), 6);
         s52.addDialog("Sammy: \"Terima kasih banyak atas kepercayaannya Kak Nela, tapi mohon maaf banget minggu ini saya ada deadline proyek besar PBO. Kalau boleh, saya minta izin jadi staf biasa aja Kak biar tetap bisa bantu-bantu?\"", getChar("sammy_bijak"));
@@ -263,7 +276,7 @@ public class StoryDataLoader {
         List<Scene> branch = new ArrayList<>();
 
         Scene s6 = new Scene(6, "Troubleshooting Program", getBg("lab_komputer"), 60);
-        s6.addDialog("Nat: \"Guys, aku lagi jalanin program kita dan muncul error. Minta tolong diperbaikin ges.\"", getChar("thania"));
+        s6.addDialog("Nat: \"Guys, aku lagi jalanin program kita dan muncul error. Minta tolong diperbaikin ges.\"", getChar("thania_tanya"));
         s6.addDialog("Sammy: \"Iya, kayanya ada urutan kodingan yang salah, deh.\"", getChar("sammy_pusing"));
         s6.addDialog("Dhito: \"Kita suruh penonton kita untuk perbaikin aja kali ya?\"", getChar("dhito"));
 
@@ -272,11 +285,11 @@ public class StoryDataLoader {
 
         Scene s6_win = new Scene(61, "Troubleshooting Berhasil", getBg("lab_komputer"), 7);
         s6_win.addDialog("Nat: \"Wah, mantap! Programnya langsung jalan tanpa error!\"", getChar("thania"));
-        s6_win.addDialog("Sammy: \"Yesss! Makasih ya udah bantuin urutin kodingannya!\"", getChar("sammy_happy"));
-        s6_win.addDialog("Dhito: \"Gas lanjut garap bagian lain!\"", getChar("dhito"));
+        s6_win.addDialog("Sammy: \"Yesss! Makasih ya udah bantuin urutin kodingannya!\"", getChar("sammy_yes"));
+        s6_win.addDialog("Dhito: \"Gas lanjut garap bagian lain!\"", getChar("dhito_setuju"));
 
         Scene s6_lose = new Scene(62, "Troubleshooting Gagal", getBg("lab_komputer"), 7);
-        s6_lose.addDialog("Nat: \"Aduh, masih error nih. Kayaknya urutannya masih ada yang kebalik.\"", getChar("thania"));
+        s6_lose.addDialog("Nat: \"Aduh, masih error nih. Kayaknya urutannya masih ada yang kebalik.\"", getChar("thania_tanya"));
         s6_lose.addDialog("Sammy: \"Huft... ya sudah deh, biar aku coba periksa manual lagi.\"", getChar("sammy_pusing"));
 
         branch.add(s6);
