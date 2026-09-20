@@ -108,7 +108,7 @@ public class StoryDataLoader {
         Scene s1 = new Scene(1, "Terlambat Orientasi", getBg("otista"));
         s1.setDayTransition("DAY 1", "Hari Pertama Orientasi");
         s1.setAmbience(SoundManager.AMB_ROAD, 1.8f);   // suara jalan raya, mulai saat layar hitam DAY 1
-        s1.addDialog("Sammy: \"Aduh baru hari pertama sjs udah telat! Gimana nih?\"", getChar("sammy_telat"));
+        s1.addDialog("Sammy: \"Aduh baru hari pertama aja udah telat! Gimana nih?\"", getChar("sammy_telat"));
 
         // Pilihan mengarah ke Sub-Scene ID 11, 12, 13
         s1.addOption("Memanjat pagar samping", 11, new RiskyOptionStrategy());
