@@ -51,7 +51,8 @@ public class MainMenuPanel extends JPanel {
 
         btnExit.addActionListener(e -> {
             SoundManager.playSFX("assets/click_sfx_fixed.wav");
-            System.exit(0);
+            engine.requestExit();       // tampilkan gambar penutup (fade-in/out), baru program keluar
+            onStateChanged.run();
         });
 
         add(btnPlay);

@@ -3,8 +3,24 @@ import java.util.List;
 import java.util.Map;
 
 public class GameEngine {
+    // --- KONSTANTA ENDING ---
+    // Scene 71/72/73 mengarah ke ENDING_CHECK_ID (scene "virtual", tidak ada di sceneMap).
+    // Di goToScene(), ID ini otomatis diganti jadi GOOD_ENDING_ID atau BAD_ENDING_ID sesuai skor.
+    public static final int ENDING_CHECK_ID = 80;
+    public static final int GOOD_ENDING_ID = 8;
+    public static final int BAD_ENDING_ID = 9;
+    public static final int GOOD_ENDING_MIN_SCORE = 50; // skor >= 50 = Good Ending
+
     private GameState currentState;
     private int totalScore;
+
+    // --- ANIMASI POP-UP KARAKTER ---
+    // Menyimpan siapa & di scene mana karakter terakhir yang ditampilkan,
+    // supaya sprite hanya "naik dari bawah" saat karakter baru muncul (bukan tiap ganti baris dialog).
+    private String activeAmbience = null;   // ambience yang sedang berjalan (null = tidak ada)
+
+    private int lastSpriteSceneId = -1;
+    private String lastSpriteSpeaker = null;
 
     // KUNCI SUB-SCENE: Menyimpan scene berdasarkan ID (sceneId)
     private Map<Integer, Scene> sceneMap;
@@ -21,6 +37,9 @@ public class GameEngine {
     public void initGame() {
         this.totalScore = 0;
         this.currentDialogIndex = 0;
+        this.lastSpriteSceneId = -1;
+        this.lastSpriteSpeaker = null;
+        this.activeAmbience = null;
         this.sceneMap.clear();
 
         // Load semua list scene dari StoryDataLoader dan masukkan ke Map
@@ -35,7 +54,28 @@ public class GameEngine {
 
     public void startNewGame() {
         initGame();
-        this.currentState = GameState.PLAYING;
+        // Scene 1 punya transisi "DAY 1", jadi state awalnya DAY_TRANSITION (bukan langsung PLAYING)
+        this.currentState = stateFor(currentScene);
+    }
+
+    // Menentukan layar apa yang tampil untuk sebuah scene:
+    // transisi hari dulu (kalau ada) -> mini game -> dialog biasa
+    private GameState stateFor(Scene scene) {
+        if (scene == null) return GameState.PLAYING;
+        if (scene.hasDayTransition()) return GameState.DAY_TRANSITION;
+        return scene.isMiniGame() ? GameState.MINI_GAME : GameState.PLAYING;
+    }
+
+    // Dipanggil DayTransitionPanel setelah animasi "DAY X" selesai (atau di-skip)
+    public void finishDayTransition() {
+        if (currentState != GameState.DAY_TRANSITION || currentScene == null) return;
+        this.currentState = currentScene.isMiniGame() ? GameState.MINI_GAME : GameState.PLAYING;
+        startEndingMusicIfNeeded(); // kartu DAY selesai -> kalau ini scene ending, mulai musiknya
+    }
+
+    // Program diminta keluar (tombol Exit / tutup jendela): tampilkan layar penutup dulu
+    public void requestExit() {
+        this.currentState = GameState.EXITING;
     }
 
     public void openHowToPlay() {
@@ -48,7 +88,9 @@ public class GameEngine {
 
     // Pindah ke dialog berikutnya ATAU pindah ke scene berikutnya jika dialog habis
     public void nextDialogOrScene() {
-        if (currentScene == null) return;
+        // Hanya boleh maju dialog kalau layar dialog yang sedang aktif. Ini juga mencegah dobel-klik
+        // "Lanjut" saat layar lagi fade ke transisi DAY (state sudah berpindah, tapi layar lama belum hilang).
+        if (currentState != GameState.PLAYING || currentScene == null) return;
 
         // 1. Jika masih ada dialog awal di scene saat ini, maju ke dialog berikutnya
         if (currentDialogIndex < currentScene.getDialogs().size() - 1) {
@@ -57,6 +99,10 @@ public class GameEngine {
         // 2. Jika dialog di scene ini sudah habis dan ini adalah Sub-Scene (punya target next scene)
         else if (currentScene.getDefaultNextSceneId() != -1) {
             goToScene(currentScene.getDefaultNextSceneId());
+        }
+        // 3. Jika ini scene ENDING dan dialognya sudah habis, tampilkan layar hasil akhir (skor + restart)
+        else if (currentScene.isEnding()) {
+            this.currentState = GameState.GAME_OVER;
         }
     }
 
@@ -69,33 +115,87 @@ public class GameEngine {
         // Kalkulasi Poin menggunakan Strategy Pattern
         totalScore += selectedOption.getPoints();
 
+        // Suara umpan balik sesuai kualitas pilihan (+10 / -5 / -10)
+        SoundManager.playSFX(optionSoundFor(selectedOption.getPoints()));
+
         // Langsung lompat ke Sub-Scene hasil pilihan opsi!
         goToScene(selectedOption.getNextSceneId());
     }
 
+    // Memilih file suara berdasarkan bobot poin sebuah opsi
+    private static String optionSoundFor(int points) {
+        if (points > 0) return SoundManager.SFX_OPTION_BEST;
+        if (points >= -5) return SoundManager.SFX_OPTION_RISKY;
+        return SoundManager.SFX_OPTION_BAD;
+    }
+
+    // Menyalakan / mengganti / mematikan ambience sesuai scene yang sedang aktif.
+    // Dipanggil saat layar HITAM transisi scene muncul (DayTransitionPanel), atau langsung saat pindah scene
+    // yang tidak punya kartu DAY (sub-scene).
+    //  - scene punya ambience baru -> dimulai (crossfade dari ambience sebelumnya); yang sama dibiarkan lanjut
+    //  - scene tidak punya ambience tapi ada ambience yang sedang jalan -> fade-out
+    public void startSceneAmbience() {
+        if (currentScene == null) return;
+        String want = currentScene.getAmbience();
+        if (want != null) {
+            if (!want.equals(activeAmbience)) {
+                System.out.println("[Ambience] scene " + currentScene.getSceneId() + ": MULAI " + want
+                        + " (volume x" + currentScene.getAmbienceVolume() + ")");
+                SoundManager.playAmbience(want, currentScene.getAmbienceVolume());
+            }
+            activeAmbience = want;
+        } else if (activeAmbience != null) {
+            System.out.println("[Ambience] scene " + currentScene.getSceneId() + ": HENTIKAN " + activeAmbience);
+            SoundManager.stopBGMWithFade(1000);
+            activeAmbience = null;
+        }
+    }
+
+    // Musik ending (good/bad) dimulai saat scene ending BENAR-BENAR tampil, bukan saat kartu "AKHIR SEMESTER",
+    // supaya kartu itu tidak membocorkan hasilnya lewat musik.
+    private void startEndingMusicIfNeeded() {
+        if (currentScene == null || !currentScene.isEnding()) return;
+        String track = currentScene.getSceneId() == GOOD_ENDING_ID ? SoundManager.BGM_GOOD_ENDING : SoundManager.BGM_BAD_ENDING;
+        activeAmbience = null; // musik ending menggantikan ambience (lewat crossfade)
+        SoundManager.playBGM(track, false); // sekali jalan; menggantikan musik lama dengan crossfade
+    }
+
     // Method navigasi berpindah ke Scene ID tertentu (Termasuk pemicu BGM/SFX!)
     public void goToScene(int sceneId) {
+        // Scene "penentu ending": ganti ke Good/Bad Ending sesuai total skor saat ini
+        if (sceneId == ENDING_CHECK_ID) {
+            sceneId = isGoodEnding() ? GOOD_ENDING_ID : BAD_ENDING_ID;
+        }
+
         if (sceneMap.containsKey(sceneId)) {
             currentScene = sceneMap.get(sceneId);
             currentDialogIndex = 0; // Reset index dialog ke awal scene baru
 
-            // Otomatis pindah ke layar Mini Game kalau scene ini ditandai isMiniGame(),
-            // dan balik ke layar dialog biasa kalau bukan (misal sesudah menang/kalah mini game)
-            this.currentState = currentScene.isMiniGame() ? GameState.MINI_GAME : GameState.PLAYING;
+            // Urutan layar: transisi "DAY X" (kalau scene-nya punya) -> mini game / dialog biasa
+            this.currentState = stateFor(currentScene);
+
+            // Scene tanpa kartu DAY (sub-scene, ending tanpa kartu): ambience & musik ending langsung diatur.
+            // (Scene dengan kartu DAY: ambience baru diatur saat layar hitamnya muncul, lihat DayTransitionPanel.)
+            if (currentState != GameState.DAY_TRANSITION) {
+                startSceneAmbience();
+                startEndingMusicIfNeeded();
+            }
 
             // --- TRIGER SFX & BGM OTOMATIS BERDASARKAN SCENE ---
             if (sceneId == 11) {
-                // SFX Kejedot / Pagar
-                SoundManager.playSFX("assets/sfx_buk.wav");
+                // (Suara lari & jatuh di scene ini sekarang dipasang langsung pada baris dialognya di StoryDataLoader)
             } else if (sceneId == 60) {
                 // BGM Khusus Mini Game Puzzle
-                SoundManager.playBGM("assets/bgm_minigame.wav");
+                activeAmbience = null; // musik mini game menggantikan ambience
+                SoundManager.playBGM(SoundManager.BGM_MINI_GAME);
             } else if (sceneId == 61) {
                 // SFX Menang Mini Game
                 SoundManager.playSFX("assets/sfx_win.wav");
+                SoundManager.stopBGMWithFade(1000); // musik khusus mini game berhenti setelah mini game selesai
             } else if (sceneId == 62) {
                 // SFX Gagal Mini Game
                 SoundManager.playSFX("assets/sfx_lose.wav");
+                SoundManager.stopBGMWithFade(1000);
             }
 
         } else {
@@ -109,19 +209,9 @@ public class GameEngine {
         this.totalScore += points;
     }
 
-    // Evaluasi Ending (Kriteria Skor >= 50)
-    public String getEndingStory() {
-        if (totalScore >= 50) {
-            return "<html><h2>ENDING 1: GOOD ENDING 🎉</h2><br>" +
-                    "Sammy: Puji Tuhan, akhirnya setelah kerja kerasku selama ini, aku dapat IPK 4.00.<br>" +
-                    "Ga sia-sia yaa selama ini aku belajar dengan sungguh-sungguh!<br><br>" +
-                    "<b>Total Skor Akhir: " + totalScore + "</b></html>";
-        } else {
-            return "<html><h2>ENDING 2: BAD ENDING 😭</h2><br>" +
-                    "Sammy: DEMIII APAA?!!! NILAI AKU SEGINI?! OH TIDAK, AKU TELAH DI DROP OUT...<br>" +
-                    "APA YANG TELAH KUPERBUAT SELAMA INI??<br><br>" +
-                    "<b>Total Skor Akhir: " + totalScore + "</b></html>";
-        }
+    // Evaluasi Ending (Kriteria Skor >= GOOD_ENDING_MIN_SCORE)
+    public boolean isGoodEnding() {
+        return totalScore >= GOOD_ENDING_MIN_SCORE;
     }
 
     // --- GETTER AKTIF UNTUK TAMPILAN GUI ---
@@ -134,6 +224,30 @@ public class GameEngine {
     public Character getActiveCharacter() {
         if (currentScene != null && !currentScene.getDialogs().isEmpty()) {
             return currentScene.getDialogs().get(currentDialogIndex).getSpeaker();
+        }
+        return null;
+    }
+
+    // Dipanggil PlayingPanel saat dibangun. TRUE = sprite karakter aktif harus muncul dengan animasi
+    // naik dari bawah layar: yaitu saat pindah scene, atau saat pembicara berganti orang.
+    // (Ganti pose karakter yang sama di scene yang sama TIDAK memicu pop-up.)
+    public boolean consumeCharacterPopup() {
+        Character c = getActiveCharacter();
+        if (currentScene == null || c == null) {
+            lastSpriteSpeaker = null;   // baris narasi tanpa karakter: karakter berikutnya muncul lagi dari bawah
+            return false;
+        }
+        boolean popUp = currentScene.getSceneId() != lastSpriteSceneId
+                || !c.getName().equals(lastSpriteSpeaker);
+        lastSpriteSceneId = currentScene.getSceneId();
+        lastSpriteSpeaker = c.getName();
+        return popUp;
+    }
+
+    // Mengambil baris dialog yang sedang aktif (untuk membaca efek suaranya)
+    public Dialog getActiveDialog() {
+        if (currentScene != null && !currentScene.getDialogs().isEmpty()) {
+            return currentScene.getDialogs().get(currentDialogIndex);
         }
         return null;
     }

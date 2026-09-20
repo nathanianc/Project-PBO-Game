@@ -2,7 +2,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.util.ArrayList;
 import java.util.List;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
@@ -13,6 +16,25 @@ public class PlayingPanel extends JPanel {
     private Runnable onStateChanged;
     private Image bgImage;
     private Image charImage;
+    private Character shownChar;   // karakter yang tampil di panel ini (dibekukan saat panel dibuat)
+
+    // --- ANIMASI POP-UP KARAKTER (naik dari bawah layar) ---
+    private static final int POPUP_MS = 500;    // lama animasi pop-up karakter
+    private float popProgress = 1f;             // 0 = di luar layar (bawah), 1 = posisi normal
+    private Timer popTimer;
+    private int visualLeadMs = 0;   // jeda antara suara dibunyikan dan gambar (sprite/kotak/teks) mulai muncul
+    private final List<Object> cueHandles = new ArrayList<>();   // suara-suara baris ini yang sedang berbunyi
+    private boolean typingSoundActive = false; // true selama panel INI yang menyalakan suara mengetik
+    private Timer typingTimerRef;   // supaya bisa dihentikan kalau panel dibuang sebelum teks selesai mengetik
+
+    // --- ANIMASI KETIK + SUARA (text_effect.wav) ---
+    private static final int MS_PER_CHAR = 20;               // kecepatan ketik dasar (ms per huruf)
+    // true  = durasi ketik disesuaikan dengan panjang suara: teks selesai tepat di akhir putaran suara,
+    //         dan kalau teksnya lebih panjang dari suara, suara diulang (loop).
+    // false = kecepatan ketik tetap MS_PER_CHAR; suara diulang/dipotong mengikuti lama teks.
+    private static final boolean SYNC_TYPING_TO_SOUND = true;
+    private static final int MIN_TYPING_SOUND_MS = 120;      // teks yang mengetiknya lebih singkat dari ini tidak diberi suara
+    private static final int TYPING_SOUND_FADE_MS = 30;      // fade-out singkat saat suara dihentikan
 
     // Class khusus untuk container dialog dengan background menyatu
     private static class RoundedDialogPanel extends JPanel {
@@ -66,6 +88,12 @@ public class PlayingPanel extends JPanel {
     }
 
     public PlayingPanel(GameEngine engine, Runnable onStateChanged) {
+        this(engine, onStateChanged, 0);
+    }
+
+    // introDelayMs = jeda sebelum animasi (pop-up karakter, ketik teks, slide dialog) dimulai.
+    // Dipakai saat layar cerita lagi fade-in dari transisi DAY, supaya animasinya mulai SETELAH fade selesai.
+    public PlayingPanel(GameEngine engine, Runnable onStateChanged, int introDelayMs) {
         this.engine = engine;
         this.onStateChanged = onStateChanged;
 
@@ -79,10 +107,39 @@ public class PlayingPanel extends JPanel {
         Character activeChar = engine.getActiveCharacter();
 
         if (currentBg != null) {
-            bgImage = new ImageIcon(currentBg.getImagePath()).getImage();
+            bgImage = PixelUI.loadImageSafely(currentBg.getImagePath(), "latar \"" + currentBg.getName() + "\"");
         }
         if (activeChar != null) {
-            charImage = new ImageIcon(activeChar.getImagePath()).getImage();
+            charImage = PixelUI.loadImageSafely(activeChar.getImagePath(), "karakter " + activeChar.getName());
+            shownChar = activeChar;
+        }
+
+        // --- POP-UP KARAKTER: naik dari bawah layar selama POPUP_MS ---
+        // (consumeCharacterPopup() selalu dipanggil supaya engine bisa mencatat karakter terakhir)
+        boolean playPopUp = engine.consumeCharacterPopup();
+        final boolean hasPop = playPopUp && charImage != null;
+        if (hasPop) {
+            popProgress = 0f;
+            final long[] popStart = {0};
+            final boolean[] popSoundDone = {false};
+            popTimer = new Timer(16, null);
+            if (introDelayMs > 0) popTimer.setInitialDelay(introDelayMs);
+            popTimer.addActionListener(e -> {
+                long now = System.currentTimeMillis();
+                if (popStart[0] == 0) {
+                    // Sprite mulai naik setelah visualLeadMs; suara "pop" dibunyikan lebih dulu sebesar latensinya
+                    // sendiri (POP_SOUND_LATENCY_MS) supaya TERDENGAR tepat saat sprite mulai naik.
+                    popStart[0] = now + visualLeadMs;
+                }
+                if (!popSoundDone[0] && now >= popStart[0] - SoundManager.POP_SOUND_LATENCY_MS) {
+                    popSoundDone[0] = true;
+                    SoundManager.playSFX(SoundManager.SFX_POP_UP);
+                }
+                popProgress = Math.max(0f, Math.min(1f, (now - popStart[0]) / (float) POPUP_MS));
+                repaint();
+                if (popProgress >= 1f) ((Timer) e.getSource()).stop();
+            });
+            popTimer.start();
         }
 
         // --- HEADER BAR (ATAS LAYAR) ---
@@ -199,7 +256,7 @@ public class PlayingPanel extends JPanel {
             List<Option> opts = current.getOptions();
             for (int i = 0; i < opts.size(); i++) {
                 final int idx = i;
-                JButton btnOpt = createStyledOptionButton((i + 1) + ". " + opts.get(i).getButtonText());
+                JButton btnOpt = createStyledOptionButton(opts.get(i).getButtonText());
                 btnOpt.addActionListener(e -> {
                     engine.chooseOption(idx);
                     onStateChanged.run();
@@ -252,20 +309,91 @@ public class PlayingPanel extends JPanel {
             delayTimer.start();
         };
 
-        Timer typingTimer = new Timer(20, null);
+        // Animasi ketik berbasis WAKTU (bukan per-tick), supaya durasinya bisa dipatok persis
+        // dengan panjang suara. Suara text_effect dimulai bersamaan dengan huruf pertama.
+        final int textLen = textToType.length();
+
+        // Efek suara khusus baris ini (misal "tap tap" lalu "bukkk"): diputar berurutan dan teks mengetik
+        // selama total durasinya, jadi tulisan & bunyinya jalan bareng. Suara mengetik biasa dimatikan di baris ini.
+        Dialog activeDialog = engine.getActiveDialog();
+        final String[] cues = (activeDialog != null) ? activeDialog.getSounds() : new String[0];
+        final long[] cueOffset = new long[cues.length];   // kapan tiap suara mulai (ms sejak huruf pertama)
+        long cueSum = 0;
+        for (int i = 0; i < cues.length; i++) {
+            cueOffset[i] = cueSum;
+            cueSum += Math.max(0, SoundManager.getDurationMs(cues[i]));
+        }
+        final String[] effects = (activeDialog != null) ? activeDialog.getEffects() : new String[0];
+        final boolean hasCues = cues.length > 0 && cueSum > 0;
+        final int typingTotalMs = hasCues ? (int) cueSum : typingDurationMs(textLen);
+        final boolean typingHasSound = !hasCues && typingTotalMs >= MIN_TYPING_SOUND_MS;
+        final long[] typeStart = {0};
+        final boolean[] typingSoundStarted = {false};
+        final int[] cueNext = {hasCues ? 0 : cues.length};
+        final boolean[] effectsPlayed = {effects.length == 0};
+
+        // Jeda sampai gambar muncul = latensi suara yang paling besar di antara suara-suara di layar ini
+        // (suara pop kalau ada sprite yang pop-up, suara mengetik kalau teksnya cukup panjang untuk diberi suara).
+        // Suara yang latensinya lebih kecil dibunyikan sedikit lebih lambat supaya semuanya terdengar bareng gambar.
+        visualLeadMs = Math.max(hasPop ? SoundManager.POP_SOUND_LATENCY_MS : 0,
+                (typingHasSound || hasCues || effects.length > 0) ? SoundManager.TEXT_SOUND_LATENCY_MS : 0);
+
+        Timer typingTimer = new Timer(15, null);
         typingTimer.addActionListener(e -> {
-            if (charIndex[0] < textToType.length()) {
+            long now = System.currentTimeMillis();
+            if (typeStart[0] == 0) {
+                typeStart[0] = now + visualLeadMs; // huruf pertama muncul setelah visualLeadMs
+            }
+            long elapsed = now - typeStart[0];
+
+            // Suara mengetik dibunyikan TEXT_SOUND_LATENCY_MS sebelum huruf pertama, supaya terdengar bareng
+            if (typingHasSound && !typingSoundStarted[0] && elapsed >= -SoundManager.TEXT_SOUND_LATENCY_MS) {
+                typingSoundStarted[0] = true;
+                SoundManager.startLoopSFX(SoundManager.SFX_TEXT_EFFECT);
+                typingSoundActive = true;
+            }
+            // Efek "sekali bunyi" di awal baris (dibiarkan berbunyi sampai habis, tidak ikut dibatalkan saat skip)
+            if (!effectsPlayed[0] && elapsed >= -SoundManager.TEXT_SOUND_LATENCY_MS) {
+                effectsPlayed[0] = true;
+                for (String fx : effects) SoundManager.playSFX(fx);
+            }
+            // Efek suara khusus baris ini: tiap suara mulai tepat saat suara sebelumnya selesai
+            while (cueNext[0] < cues.length && elapsed >= cueOffset[cueNext[0]] - SoundManager.TEXT_SOUND_LATENCY_MS) {
+                float gain = (activeDialog != null) ? activeDialog.getSoundGain(cueNext[0]) : 1.0f;
+                cueHandles.add(SoundManager.playSFXHandle(cues[cueNext[0]], gain));
+                cueNext[0]++;
+            }
+            // ...dan dihentikan sebesar latensi yang sama sebelum huruf terakhir, supaya berhentinya juga bareng
+            if (typingSoundActive && elapsed >= typingTotalMs - SoundManager.TEXT_SOUND_LATENCY_MS) {
+                SoundManager.stopLoopSFX(TYPING_SOUND_FADE_MS);
+                typingSoundActive = false;
+            }
+
+            // Berapa huruf yang seharusnya sudah muncul pada saat ini
+            // (dibulatkan ke atas: huruf pertama langsung muncul di awal, bukan menunggu 1 "jatah" waktu dulu -
+            //  penting untuk baris dengan efek suara panjang yang jatah per hurufnya bisa ratusan ms)
+            int target = typingTotalMs <= 0 ? textLen
+                    : (elapsed < 0 ? 0 : (int) Math.min(textLen, Math.ceil(elapsed * (double) textLen / typingTotalMs)));
+            if (target > charIndex[0]) {
                 try {
-                    dialogDoc.insertString(dialogDoc.getLength(), String.valueOf(textToType.charAt(charIndex[0])), null);
+                    dialogDoc.insertString(dialogDoc.getLength(), textToType.substring(charIndex[0], target), null);
                     dialogDoc.setParagraphAttributes(0, dialogDoc.getLength(), dialogLineSpacing, false);
                 } catch (BadLocationException ignored) {
                 }
-                charIndex[0]++;
-            } else {
+                charIndex[0] = target;
+            }
+
+            if (elapsed >= typingTotalMs) {
                 ((Timer) e.getSource()).stop();
+                if (typingSoundActive) {
+                    SoundManager.stopLoopSFX(TYPING_SOUND_FADE_MS);
+                    typingSoundActive = false;
+                }
                 finishTyping.run();
             }
         });
+        if (introDelayMs > 0) typingTimer.setInitialDelay(introDelayMs);
+        typingTimerRef = typingTimer;
         typingTimer.start();
 
         // --- SKIP ANIMASI KETIK PAKAI TOMBOL SPASI ---
@@ -276,6 +404,13 @@ public class PlayingPanel extends JPanel {
             public void actionPerformed(ActionEvent e) {
                 if (typingTimer.isRunning()) {
                     typingTimer.stop();
+                    if (typingSoundActive) {
+                        SoundManager.stopLoopSFX(TYPING_SOUND_FADE_MS);
+                        typingSoundActive = false;
+                    }
+                    // Skip = lewati animasinya, termasuk efek suara baris ini (yang belum berbunyi dibatalkan)
+                    cueNext[0] = cues.length;
+                    stopCues(80);
                     try {
                         dialogDoc.remove(0, dialogDoc.getLength());
                         dialogDoc.insertString(0, textToType, null);
@@ -294,11 +429,16 @@ public class PlayingPanel extends JPanel {
         dialogWrapper.add(optionsPanel);
 
         // --- ANIMASI KOTAK DIALOG MUNCUL HALUS (SLIDE-UP EFFECT) ---
+        // Kotak dialog (beserta name tag & tombol) disembunyikan dulu dan baru muncul TEPAT saat sprite mulai
+        // naik dan huruf pertama mulai mengetik (yaitu setelah jeda kompensasi latensi audio),
+        // jadi ketiganya muncul bareng, sementara suaranya sudah dibunyikan lebih dulu.
         dialogWrapper.setBorder(BorderFactory.createEmptyBorder(25, 0, 0, 0));
+        dialogWrapper.setVisible(false);
 
         final int[] currentOffset = {25};
         Timer slideTimer = new Timer(12, null);
         slideTimer.addActionListener(e -> {
+            if (!dialogWrapper.isVisible()) dialogWrapper.setVisible(true);
             if (currentOffset[0] > 0) {
                 currentOffset[0] -= 1;
                 dialogWrapper.setBorder(BorderFactory.createEmptyBorder(currentOffset[0], 0, 0, 0));
@@ -307,6 +447,8 @@ public class PlayingPanel extends JPanel {
                 ((Timer) e.getSource()).stop();
             }
         });
+        // (+16 ms = jeda tick pertama timer pop-up & mengetik, supaya kotak, sprite, dan huruf pertama benar-benar serentak)
+        slideTimer.setInitialDelay(introDelayMs + visualLeadMs + 16);
         slideTimer.start();
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -321,18 +463,52 @@ public class PlayingPanel extends JPanel {
         add(bottomContainer, BorderLayout.SOUTH);
     }
 
+    // Jeda (ms) antara suara dibunyikan dan gambar layar ini mulai muncul. Dipakai StisVisualNovel untuk
+    // menunda pergantian layar selama itu (lihat renderScreen).
+    public int getVisualLeadMs() {
+        return visualLeadMs;
+    }
+
+    // Lama animasi ketik untuk teks sepanjang textLen huruf.
+    // Kalau SYNC_TYPING_TO_SOUND: dibulatkan ke kelipatan panjang suara text_effect (1x, 2x, 3x ...),
+    // jadi suara selalu selesai pas saat huruf terakhir muncul. Teks yang sangat pendek (kurang dari setengah
+    // panjang suara) tetap mengetik dengan kecepatan normal dan suaranya dipotong di akhir teks.
+    private static int typingDurationMs(int textLen) {
+        int natural = textLen * MS_PER_CHAR;
+        if (!SYNC_TYPING_TO_SOUND) return natural;
+
+        long soundMs = SoundManager.getDurationMs(SoundManager.SFX_TEXT_EFFECT);
+        if (soundMs <= 0 || natural < soundMs / 2) return natural; // suara tidak ada / teks sangat pendek
+
+        int loops = Math.max(1, Math.round((float) natural / soundMs));
+        return (int) (loops * soundMs);
+    }
+
+    // Menghentikan (fade-out) efek-efek suara baris dialog ini yang masih berbunyi
+    private void stopCues(int fadeMs) {
+        for (Object h : cueHandles) SoundManager.stopSFX(h, fadeMs);
+        cueHandles.clear();
+    }
+
+    // Tombol "Lanjut" & pilihan jawaban. Efek hover "seperti ditekan" ada di PixelUI.PressButton.
     private JButton createStyledOptionButton(String text) {
-        JButton btn = new JButton(text);
+        JButton btn = new PixelUI.PressButton(text);
         btn.setFont(PixelFont.get(10f));
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(new Color(35, 39, 42, 235));
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
         return btn;
+    }
+
+    @Override
+    public void removeNotify() {
+        if (popTimer != null) popTimer.stop(); // jaga-jaga: panel dibuang sebelum animasi selesai
+        if (typingTimerRef != null) typingTimerRef.stop();
+        stopCues(30);
+        // Pastikan suara mengetik tidak "nyangkut" - tapi HANYA kalau panel ini yang menyalakannya.
+        // (Kalau tidak dicek, panel lama yang dibuang bisa mematikan suara mengetik milik panel baru.)
+        if (typingSoundActive) {
+            SoundManager.stopLoopSFX(TYPING_SOUND_FADE_MS);
+            typingSoundActive = false;
+        }
+        super.removeNotify();
     }
 
     @Override
@@ -345,7 +521,10 @@ public class PlayingPanel extends JPanel {
         }
 
         // 2. Gambar Karakter (Skala ~82% dari Tinggi Layar, Pas & Tidak Kekecilan/Jumbo)
-        Character activeChar = engine.getActiveCharacter();
+        // Pakai karakter yang DIBEKUKAN saat panel dibuat (shownChar), BUKAN engine.getActiveCharacter().
+        // Kalau dibaca langsung dari engine, sprite bakal loncat ke sisi lain saat engine sudah pindah scene
+        // tapi panel ini masih tampil (misal selama fade-out ke layar DAY).
+        Character activeChar = shownChar;
         if (charImage != null && activeChar != null) {
             // Skala 82% dari tinggi panel (responsif saat window di-resize)
             int charHeight = (int) (getHeight() * 0.82);
@@ -360,6 +539,12 @@ public class PlayingPanel extends JPanel {
 
             // Diturunkan sedikit (+30) agar bagian croppingan bawahnya tertutup rapi di balik dialog box
             int yPos = getHeight() - charHeight + 30;
+
+            // Pop-up: sprite mulai dari luar layar (bawah) lalu naik pelan-pelan (ease-out, makin akhir makin pelan)
+            if (popProgress < 1f) {
+                float eased = 1f - (float) Math.pow(1f - popProgress, 3);
+                yPos += (int) ((1f - eased) * charHeight);
+            }
 
             g.drawImage(charImage, xPos, yPos, charWidth, charHeight, this);
         }

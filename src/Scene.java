@@ -11,6 +11,17 @@ public class Scene {
     private boolean isEnding = false;
     private Color endingColor;
 
+    // --- AMBIENCE (suara suasana tempat) ---
+    // Dimulai saat layar hitam transisi scene, berlanjut ke sub-scene yang memakai file yang sama,
+    // dan berhenti (fade-out) saat masuk scene yang tidak punya ambience.
+    private String ambience;
+    private float ambienceVolume = 1.0f;
+
+    // --- TRANSISI HARI (contoh: "DAY 1" + subjudul) ---
+    // Kalau dayLabel diisi, layar transisi akan muncul SEBELUM scene ini dimainkan.
+    private String dayLabel;
+    private String daySubtitle;
+
     private List<Dialog> dialogs = new ArrayList<>();
     private List<Option> options = new ArrayList<>();
 
@@ -30,12 +41,14 @@ public class Scene {
         this.defaultNextSceneId = defaultNextSceneId;
     }
 
-    public void addDialog(String text, Character speaker) {
-        dialogs.add(new Dialog(text, speaker));
+    public Dialog addDialog(String text, Character speaker) {
+        Dialog d = new Dialog(text, speaker);
+        dialogs.add(d);
+        return d;
     }
 
-    public void addDialog(String text) {
-        addDialog(text, null);
+    public Dialog addDialog(String text) {
+        return addDialog(text, null);
     }
 
     public void addOption(String buttonText, int nextSceneId, ScoreStrategy strategy) {
@@ -96,5 +109,42 @@ public class Scene {
 
     public Color getEndingColor() {
         return endingColor;
+    }
+
+    // Pasang transisi hari di scene ini. Contoh: scene.setDayTransition("DAY 1", "Hari Pertama Orientasi");
+    public void setDayTransition(String dayLabel, String daySubtitle) {
+        this.dayLabel = dayLabel;
+        this.daySubtitle = daySubtitle;
+    }
+
+    // Pasang ambience di scene ini. volume: 1.0 = sama dengan volume musik; kecilkan kalau file-nya terlalu keras.
+    // Contoh: scene.setAmbience(SoundManager.AMB_KANTIN, 0.2f);
+    public void setAmbience(String path, float volume) {
+        this.ambience = path;
+        this.ambienceVolume = volume;
+    }
+
+    public void setAmbience(String path) {
+        setAmbience(path, 1.0f);
+    }
+
+    public String getAmbience() {
+        return ambience;
+    }
+
+    public float getAmbienceVolume() {
+        return ambienceVolume;
+    }
+
+    public boolean hasDayTransition() {
+        return dayLabel != null;
+    }
+
+    public String getDayLabel() {
+        return dayLabel;
+    }
+
+    public String getDaySubtitle() {
+        return daySubtitle == null ? "" : daySubtitle;
     }
 }
